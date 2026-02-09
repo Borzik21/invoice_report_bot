@@ -1,4 +1,3 @@
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -6,11 +5,20 @@ import java.util.Map;
 
 public class UserSession {
     private State state = State.IDLE;
-    // Список объектов Question для текущей ветки
     private List<Question> flowQuestions = new ArrayList<>();
     private int currentQuestionIndex = 0;
     private final Map<String, String> answers = new LinkedHashMap<>();
     private String fieldToEdit;
+
+    private long lastActivityTime = System.currentTimeMillis();
+
+    public void refreshActivity() {
+        this.lastActivityTime = System.currentTimeMillis();
+    }
+
+    public long getLastActivityTime() {
+        return lastActivityTime;
+    }
 
     public State getState() { return state; }
     public void setState(State state) { this.state = state; }

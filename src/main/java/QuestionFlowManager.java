@@ -7,6 +7,15 @@ public class QuestionFlowManager {
         boolean isExist = "Существующий".equals(clientType);
         boolean isPerson = "Физлицо".equals(entityType);
 
+        List<String> sources = List.of(
+                "По рекомендации",
+                "B2B",
+                "Интернет",
+                "Кирилл",
+                "Личные отношения Павла",
+                "Старые Павел"
+        );
+
         int id = 1;
         if (isExist && isPerson) {
             flow.add(new Question(id++, "ФИО клиента", false, null));
@@ -19,7 +28,7 @@ public class QuestionFlowManager {
             flow.add(new Question(id++, "Язык клиента", false, null));
             flow.add(new Question(id++, "Страна клиента", false, null));
             flow.add(new Question(id++, "Описание деятельности клиента", false, null));
-            flow.add(new Question(id++, "Источник", false, null));
+            flow.add(new Question(id++, "Источник", false, null, sources));
             flow.add(new Question(id++, "Кто агент (если есть)", true, null));
 
             if (!isPerson) {
@@ -32,6 +41,7 @@ public class QuestionFlowManager {
         flow.add(new Question(id++, "Сумма", false, null));
         flow.add(new Question(id++, "Валюта цены (по прайсу)", false, null));
         flow.add(new Question(id++, "В какой валюте оплата", false, null));
+        flow.add(new Question(id++, "Из какой страны оплата", false, null));
         flow.add(new Question(id++, "Примечания по оплате", false, null));
 
         if (!isPerson) {

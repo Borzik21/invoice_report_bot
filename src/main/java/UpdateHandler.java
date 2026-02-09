@@ -15,17 +15,21 @@ public class UpdateHandler {
         String text = update.getMessage().getText();
         UserSession session = sessions.computeIfAbsent(chatId, k -> new UserSession());
 
+        session.refreshActivity();
+
         if (text.equals("/start")) {
             if (bot.isUserAuthorized(update.getMessage().getFrom().getId())) {
                 bot.startSurvey(chatId, session);
             } else {
-                bot.sendText(chatId, "Доступ запрещен.");
+                bot.sendText(chatId, "⛔️ Доступ запрещен. Вы должны состоять в группе.");
             }
             return;
         }
 
         if (session.getState() == State.FILLING_DATA || session.getState() == State.EDITING_FIELD) {
-            processInput(chatId, text, session, update.getMessage().getFrom().getUserName());
+            String username = update.getMessage().getFrom().getUserName();
+            if (username == null) username = update.getMessage().getFrom().getFirstName();
+            processInput(chatId, text, session, username);
         }
     }
 
@@ -41,6 +45,7 @@ public class UpdateHandler {
             return;
         }
 
+        session.refreshActivity();
         bot.removeButtons(chatId, update.getCallbackQuery().getMessage().getMessageId());
 
         if (data.equals("restart_all")) {
@@ -55,14 +60,28 @@ public class UpdateHandler {
             session.setState(State.FILLING_DATA);
             session.setCurrentQuestionIndex(0);
             bot.askNext(chatId, session);
+        } else if (data.startsWith("opt_")) {
+            String answer = data.substring(4);
+            Question q = session.getFlowQuestions().get(session.getCurrentQuestionIndex());
+
+            session.getAnswers().put(q.getText(), answer);
+
+            String username = update.getCallbackQuery().getFrom().getUserName();
+            if (username == null) username = update.getCallbackQuery().getFrom().getFirstName();
+            moveToNext(chatId, session, username);
         } else if (data.equals("skip_question")) {
             Question q = session.getFlowQuestions().get(session.getCurrentQuestionIndex());
             session.getAnswers().put(q.getText(), "—");
-            moveToNext(chatId, session, update.getCallbackQuery().getFrom().getUserName());
+
+            String username = update.getCallbackQuery().getFrom().getUserName();
+            if (username == null) username = update.getCallbackQuery().getFrom().getFirstName();
+            moveToNext(chatId, session, username);
+
         } else if (data.equals("edit_all")) {
             Map<String, String> fields = new LinkedHashMap<>();
             session.getFlowQuestions().forEach(q -> {
-                fields.put(q.getText(), "edit_id_" + q.getId()); // Используем ID!
+                String btnText = q.getText().length() > 30 ? q.getText().substring(0, 27) + "..." : q.getText();
+                fields.put(btnText, "edit_id_" + q.getId());
             });
             fields.put("🔄 Начать заново", "restart_all");
             bot.sendMenu(chatId, "Что изменить?", fields);
@@ -72,7 +91,7 @@ public class UpdateHandler {
             if (q != null) {
                 session.setFieldToEdit(q.getText());
                 session.setState(State.EDITING_FIELD);
-                bot.sendText(chatId, "Введите новое значение для *" + q.getText() + "*:");
+                bot.sendText(chatId, "✏️ Введите новое значение для *" + q.getText() + "*:");
             }
         } else if (data.equals("send_final")) {
             int messageId = update.getCallbackQuery().getMessage().getMessageId();
@@ -80,7 +99,6 @@ public class UpdateHandler {
             if (username == null) {
                 username = update.getCallbackQuery().getFrom().getFirstName();
             }
-
             bot.sendFinalReport(chatId, messageId, session, username);
         }
     }
@@ -95,9 +113,13 @@ public class UpdateHandler {
             return;
         }
 
-        session.getAnswers().put(currentQ.getText(), text);
+        if (currentQ != null) {
+            session.getAnswers().put(currentQ.getText(), text);
+        }
 
         if (session.getState() == State.EDITING_FIELD) {
+            session.setState(State.REVIEW);
+            session.setFieldToEdit(null);
             bot.showReview(chatId, session, username);
         } else {
             moveToNext(chatId, session, username);
