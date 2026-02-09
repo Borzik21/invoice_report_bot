@@ -45,7 +45,8 @@ public class ReportBot extends TelegramLongPollingBot {
             throw new RuntimeException("ОШИБКА: Переменная ADMIN_IDS не задана!");
         }
     }
-
+    @Override
+    public void clearWebhook() {    }
     @Override
     public String getBotUsername() { return BOT_NAME; }
     @Override
@@ -123,6 +124,13 @@ public class ReportBot extends TelegramLongPollingBot {
         else {
             sendText(chatId, "📝 " + q.getText() + ":");
         }
+    }
+
+    public void sendGridOption(long chatId, String text, List<String> options) {
+        SendMessage sm = new SendMessage(String.valueOf(chatId), text);
+        sm.setParseMode("Markdown");
+        sm.setReplyMarkup(KeyboardFactory.createGridKeyboard(options, 2, "opt_"));
+        try { execute(sm); } catch (Exception e) { logger.error("Ошибка отправки кнопок редактирования: ", e); }
     }
 
     public void showReview(long chatId, UserSession session, String username) {

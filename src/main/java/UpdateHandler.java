@@ -62,13 +62,19 @@ public class UpdateHandler {
             bot.askNext(chatId, session);
         } else if (data.startsWith("opt_")) {
             String answer = data.substring(4);
-            Question q = session.getFlowQuestions().get(session.getCurrentQuestionIndex());
-
-            session.getAnswers().put(q.getText(), answer);
-
             String username = update.getCallbackQuery().getFrom().getUserName();
             if (username == null) username = update.getCallbackQuery().getFrom().getFirstName();
-            moveToNext(chatId, session, username);
+
+            if (session.getState() == State.EDITING_FIELD) {
+                session.getAnswers().put(session.getFieldToEdit(), answer);
+                session.setState(State.REVIEW); // Возвращаем статус проверки
+                session.setFieldToEdit(null);
+                bot.showReview(chatId, session, username); // Показываем отчет снова
+            } else {
+                Question q = session.getFlowQuestions().get(session.getCurrentQuestionIndex());
+                session.getAnswers().put(q.getText(), answer);
+                moveToNext(chatId, session, username);
+            }
         } else if (data.equals("skip_question")) {
             Question q = session.getFlowQuestions().get(session.getCurrentQuestionIndex());
             session.getAnswers().put(q.getText(), "—");
@@ -88,10 +94,16 @@ public class UpdateHandler {
         } else if (data.startsWith("edit_id_")) {
             int qId = Integer.parseInt(data.replace("edit_id_", ""));
             Question q = session.getFlowQuestions().stream().filter(que -> que.getId() == qId).findFirst().orElse(null);
+
             if (q != null) {
                 session.setFieldToEdit(q.getText());
                 session.setState(State.EDITING_FIELD);
-                bot.sendText(chatId, "✏️ Введите новое значение для *" + q.getText() + "*:");
+
+                if (q.getOptions() != null && !q.getOptions().isEmpty()) {
+                    bot.sendGridOption(chatId, "✏️ Выберите новое значение для *" + q.getText() + "*:", q.getOptions());
+                } else {
+                    bot.sendText(chatId, "✏️ Введите новое значение для *" + q.getText() + "*:");
+                }
             }
         } else if (data.equals("send_final")) {
             int messageId = update.getCallbackQuery().getMessage().getMessageId();
